@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 from flask import Flask, redirect, url_for, request, render_template
 import pickle as pickle
+from ast import literal_eval
 
 rank = np.genfromtxt('test.out', delimiter=',', dtype=None, names=('model', 'accuracy', 'auc_score', 'fscore', 'recall', 'precision', 'fpr'))
 
@@ -18,35 +19,45 @@ cols = ['model', 'accuracy', 'auc_score', 'fscore', 'recall', 'precision', 'fpr'
 modelList.columns = cols
 fpr_first = modelList.sort_values(by=['fpr', 'accuracy', 'auc_score'], ascending=[True, False, False])
 
-print(fpr_first.head())
 
-print('We\'ll use HYBRID of SMOTE and RandomUnderSampling\n\t')
 
 app = Flask(__name__)
 
 @app.route('/')
 def hello_world():
-    return 'Hello Sammy!'
+    return """<h1>Hello</h1>
+            <h2>We use a HYBRID OF SMOTE AND RANDOM UNDERSAMPLING TO DEAL WITH IMBALANCE</h2>
+            <p>Go to <a href="/home">home</a> to enter data</p>
+            <img src="static//smoterus_report.png" alt="Confusion Matrix"> """
 
 @app.route('/home', methods=['POST', 'GET'])
 def getvals():
     if request.method == 'POST':
-        user = request.form['array[]']
-        print(f'user: {user}')
-        return redirect(url_for('prediction', vels = user))
+        ret = []
+        time = request.form['Time']
+        ret.append(time)
+        for i in range(1, 29):
+            ret.append(request.form[str('V') + str(i)])
+        amt = request.form['Amount']
+        ret.append(amt)
+        return redirect(url_for('prediction', vels = ret))
     else:
         return render_template('vis.html')
     
 
 @app.route('/prediction/<vels>')
 def prediction(vels):
-    print(f'Vels: {vels}')
+    vels = literal_eval(vels)
+    inp = []
+    for i in vels:
+        inp.append(float(i))
+    inp = np.array(inp)
     pipe = pickle.load(open('SMOTERUS.pkl', 'rb'))
-    out = pipe.predict([[vels]])
+    out = pipe.predict([inp])
     if out == [1]:
-        return 'Fraud'
+        return """<h1>Fraud</h1>"""
     else:
-        return 'Not Fraud'
+        return """<h1>Not Fraud</h1>"""
 
 if __name__ == '__main__':
     app.run(debug=True)
